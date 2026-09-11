@@ -19,11 +19,11 @@
 </style>
 </head>
 <body>
-<div class="header"><div class="header-tag">SISTEM KANDIDAT EKSPERIMENTAL</div><h1>A-H <em>Modif</em></h1><div class="header-sub">BOOT PRNG · RAW 8 DIGIT · 30 × 4H · 30 × 3H · 30 × 2H</div><div id="saveState" style="font-size:8px;color:var(--green);margin-top:4px">● SUPABASE MODE — DATA UTAMA TERSIMPAN DI SUPABASE</div></div>
+<div class="header"><div class="header-tag">SISTEM KANDIDAT EKSPERIMENTAL</div><h1>A-H <em>Modif</em></h1><div class="header-sub">BOOT PRNG · 5 SESI · 30 × 4H · 30 × 3H · 30 × 2H · SUPABASE</div><div id="saveState" style="font-size:8px;color:var(--green);margin-top:4px">● SUPABASE MODE — DATA UTAMA TERSIMPAN DI SUPABASE</div></div>
 <div class="tabs"><div class="tab active" id="tab-generator" onclick="switchPage('generator')">🧬 GENERATOR</div><div class="tab blue" id="tab-analysis" onclick="switchPage('analysis')">🧩 2 ANALISA RAW</div><div class="tab gold" id="tab-history" onclick="switchPage('history')">🏆 RIWAYAT LENGKAP</div></div>
 <div class="page active" id="page-generator">
   <div class="hv2-box"><div class="hv2-title">🧬 BOOT PRNG — 5 SESI</div><div class="hv2-sub">Engine baru 100% independen. Tampilan mengikuti pola Harian V2: <b style="color:#fff">14.30 = 2 slot</b>, <b style="color:#fff">18.30 = 1 slot</b>, <b style="color:#fff">23.00 = 2 slot</b>. Setiap slot memiliki RAW 8 digit, RESULT 4 digit, dan kandidat BOOT PRNG sendiri.</div></div>
-  <div class="uni-input-box"><div class="uni-title">BOOT PRNG · 5 SESI HARIAN · CROSS SLOT</div><div class="uni-sub">Isi RAW per slot. Generate kandidat 30×4H + 30×3H + 30×2H secara independen. RESULT disimpan per slot.</div><div class="uni-date-row"><span class="uni-date-label">📅 TANGGAL</span><input class="uni-date-input" id="entryDate" type="date"></div></div>
+  <div class="uni-input-box"><div class="uni-title">BOOT PRNG · 5 SESI HARIAN · CROSS SLOT · FULL SUPABASE</div><div class="uni-sub">Isi RAW per slot. Generate kandidat 30×4H + 30×3H + 30×2H secara independen. RESULT disimpan per slot.</div><div class="uni-date-row"><span class="uni-date-label">📅 TANGGAL</span><input class="uni-date-input" id="entryDate" type="date"></div></div>
   <div id="sessionBoard"></div><div id="dailyHistory"></div>
 </div>
 <div class="page" id="page-analysis"><div id="analysisPage"></div></div>
@@ -56,23 +56,339 @@ function buildEngine(raw,session,slot,date){const A=rawAnalysis(raw);const tagBa
 function candidateSection(label,list){return `<div class="hv2-mode"><div class="hv2-mode-head"><div class="hv2-mode-title">${label} · ${list.length}/30 KANDIDAT</div><div class="hv2-stat">stream PRNG independen</div></div><div class="hv2-list">${list.map(c=>`<div class="hv2-item"><span class="hv2-rank">#${c.rank}</span><span class="hv2-cand">${esc(c.digits)}</span><span style="font-size:7px;color:var(--dim)">score</span><span class="hv2-score">${(c.score*100).toFixed(2)}</span></div>`).join('')}</div></div>`}
 function analysisSummary(e){const a=e.analysis;return `<div class="analysis"><div class="analysis-title">🧩 2 ANALISA POLA MENTAH</div><div class="analysis-sub"><b style="color:#fff">A — POSISI & FREKUENSI</b>: distribusi digit, posisi, paritas, high/low, dan bobot posisi. <b style="color:#fff">B — RELASI ANTAR-DIGIT</b>: delta antar digit dan mirror. Hanya dua analisa ini masuk scoring.</div><div class="grid8">${e.raw.split('').map((d,i)=>`<div class="cell"><small>P${i+1}</small><b>${d}</b><div class="meter"><i style="width:${Math.min(100,a.position.posW[i]*8)}%"></i></div></div>`).join('')}</div><div class="chips" style="margin-top:7px"><span class="chip">SUM ${a.position.sum}</span><span class="chip">MEAN ${a.position.mean.toFixed(2)}</span><span class="chip">UNIQUE ${a.position.unique}</span><span class="chip">EVEN ${a.position.even}</span><span class="chip">HIGH ${a.position.high}</span><span class="chip">LOW ${a.position.low}</span><span class="chip">MIRROR ${a.relation.mirror.join(' · ')}</span><span class="chip">Δ ${a.relation.deltas.join(' · ')}</span></div></div>`}
 function getSessionSlots(session){return slots.filter(s=>s.session===session).sort((a,b)=>a.slot-b.slot)}
-function crossMatch(engine,result){if(!engine||!result||result.length!==4)return {H4:null,H3:null,H2:null};return {H4:matchesFor(engine.candidates4,result,4),H3:matchesFor(engine.candidates3,result,3),H2:matchesFor(engine.candidates2,result,2)}}
-function crossEvaluate(sessionKey){const ss=getSessionSlots(sessionKey),results=ss.map(s=>s.result||'');ss.forEach(rawSlot=>{if(!rawSlot.engine)return;rawSlot.cross=[];results.forEach((res,ri)=>{if(res){const m=crossMatch(rawSlot.engine,res);rawSlot.cross.push({resultSlot:ri+1,result:res,matches:m,status:Object.values(m).some(Boolean)?'JP':'ZONK'})}});rawSlot.status=rawSlot.cross.some(x=>x.status==='JP')?'JP':(rawSlot.cross.length?'ZONK':'PENDING')});return ss}
-function crossText(s){return (s.cross||[]).map(x=>`${x.status==='JP'?'🏆':'💀'} RESULT ${x.resultSlot}${Object.values(x.matches).some(Boolean)?` · ${x.matches.H4?'4D #'+x.matches.H4+' ':''}${x.matches.H3?'· 3D #'+x.matches.H3+' ':''}${x.matches.H2?'· 2D #'+x.matches.H2:''}`:''}`).join('  ')}
-async function saveResult(id){const s=slots[id];if(!s.engine){$('msg-'+id).textContent='⚠ Generate RAW dulu.';return}const result=$('result-'+id).value.replace(/\D/g,'').slice(0,4);$('result-'+id).value=result;if(result.length!==4){$('msg-'+id).textContent='⚠ RESULT harus tepat 4 digit.';return}s.result=result;crossEvaluate(s.session);await saveSessionToSupabase(s.session);renderSessions();renderHistoryPage()}
-function buildSessionRecord(sessionKey){const ss=getSessionSlots(sessionKey),date=$('entryDate').value||today();return {id:date+'_'+sessionKey,entry_date:date,session:sessionKey,session_label:ss[0]?.label||sessionKey,raws:ss.map(s=>s.raw||null),results:ss.map(s=>s.result||null),statuses:ss.map(s=>s.status||'PENDING'),crossings:ss.map(s=>(s.cross||[]).map(x=>({result_slot:x.resultSlot,result:x.result,matches:x.matches,status:x.status}))),engines:ss.map(s=>s.engine?{slot:s.slot,raw:s.raw,candidates4:s.engine.candidates4,candidates3:s.engine.candidates3,candidates2:s.engine.candidates2,analysis:s.engine.analysis}:null),engine:'BOOT-PRNG-v1.4-RANDOM-BALANCED-CROSS',updated_at:new Date().toISOString()}}
-async function saveSessionToSupabase(sessionKey){const rec=buildSessionRecord(sessionKey);if(!sb){$('saveState').textContent='⚠ SUPABASE BELUM DIKONFIGURASI — DATA TIDAK DISIMPAN';return false}const {error}=await sb.from('boot_prng_history').upsert(rec,{onConflict:'id'});if(error){$('saveState').textContent='⚠ GAGAL SIMPAN SUPABASE: '+error.message;return false}await loadHistoryFromSupabase();$('saveState').textContent='● TERSIMPAN SUPABASE · '+history.length+' sesi';return true}
-async function loadHistoryFromSupabase(){if(!sb){$('saveState').textContent='⚠ KLIEN SUPABASE GAGAL DIMUAT';history=[];sessionRecords=[];return}const {data,error}=await sb.from('boot_prng_history').select('*').order('entry_date',{ascending:false}).order('session',{ascending:true});if(error){$('saveState').textContent='⚠ GAGAL BACA SUPABASE: '+error.message;history=[];return}sessionRecords=data||[];history=sessionRecords;renderHistoryPage();renderDailyHistory()}
-function renderSessions(){let html='';SESSION_CONFIG.forEach(sess=>{crossEvaluate(sess.key);html+=`<div class="session-box"><div class="session-head"><div class="session-title">🕐 SESI ${sess.label}</div><div class="slot-badge">${sess.slots} SLOT RAW + ${sess.slots} SLOT RESULT · CROSSING</div></div><div class="slot-grid">`;for(let n=1;n<=sess.slots;n++){const x=slots.find(v=>v.session===sess.key&&v.slot===n);html+=renderSlot(x)}html+='</div></div>'});$('sessionBoard').innerHTML=html;renderDailyHistory()}
-function renderSlot(s){const e=s.engine;let candidate=e?analysisSummary(e)+`<div class="slot-candidates">${candidateSection('4H',e.candidates4)+candidateSection('3H',e.candidates3)+candidateSection('2H',e.candidates2)}</div>`:'';let status=e&&s.cross?.length?`<div class="slot-status ${s.status==='JP'?'jp':'zonk'}">${s.status==='JP'?'🏆 JP':'💀 ZONK'} · ${esc(crossText(s))}</div>`:'';return `<div class="slot-card"><div class="slot-title">RAW DATA V2 STYLE · SLOT ${s.slot}</div><div class="slot-input-row"><input class="slot-raw" id="raw-${s.id}" maxlength="8" inputmode="numeric" value="${esc(s.raw)}" placeholder="RAW 8 DIGIT"><button class="slot-gen" onclick="generateSlot(${s.id})">⚡ GENERATE</button></div><div class="slot-result-row"><input class="slot-result" id="result-${s.id}" maxlength="4" inputmode="numeric" value="${esc(s.result)}" placeholder="RESULT 4 DIGIT"><button class="slot-save" onclick="saveResult(${s.id})">SIMPAN</button></div><div class="slot-msg" id="msg-${s.id}">${e?'✓ Kandidat aktif · 90 kandidat tersedia':'Masukkan RAW 8 digit lalu Generate.'}</div>${status}${candidate}</div>`}
-function generateSlot(id){const s=slots[id],raw=$('raw-'+id).value.replace(/\D/g,'').slice(0,8);$('raw-'+id).value=raw;if(raw.length!==8){$('msg-'+id).textContent='⚠ RAW harus tepat 8 digit.';return}s.raw=raw;s.result='';$('result-'+id).value='';s.engine=buildEngine(raw,s.session,s.slot,$('entryDate').value||today());s.engine.result='';s.engine.status='PENDING';$('msg-'+id).textContent='✓ BOOT PRNG selesai · 90 kandidat independen dibuat.';renderSessions();renderAnalysisPage()}
-function renderDailyHistory(){const date=$('entryDate').value||today();const rows=history.filter(e=>e.entry_date===date);if(!rows.length){$('dailyHistory').innerHTML='';return}$('dailyHistory').innerHTML=`<div class="hv2-box"><div class="hv2-title">📒 RIWAYAT HARIAN · ${esc(date)}</div><div class="hv2-sub">Crossing aktif. 🏆 jika RAW slot cocok dengan salah satu RESULT yang tersedia · 💀 jika tidak ada match.</div></div>`+rows.map(renderSessionHistory).join('')}
-function switchPage(p){['generator','analysis','history'].forEach(x=>{$('page-'+x).classList.toggle('active',x===p);$('tab-'+x).classList.toggle('active',x===p)});if(p==='analysis')renderAnalysisPage();if(p==='history')renderHistoryPage()}
-function renderAnalysisPage(){const ready=slots.filter(s=>s.engine);if(!ready.length){$('analysisPage').innerHTML='<div class="hv2-empty">Belum ada RAW. Masukkan RAW 8 digit pada salah satu slot.</div>';return}$('analysisPage').innerHTML=ready.map(e=>`<div class="hv2-box"><div class="hv2-title">SESI ${e.label} · SLOT ${e.slot}</div>${analysisSummary(e.engine)}</div>`).join('')}
-function renderHistoryPage(){if(!history.length){$('historyPage').innerHTML='<div class="hv2-empty">Belum ada riwayat Supabase. Simpan RESULT untuk membuat arsip.</div>';return}$('historyPage').innerHTML=`<div class="hv2-box"><div class="hv2-title">🏆 RIWAYAT LENGKAP — BOOT PRNG</div><div class="hv2-sub">Full Supabase. Crossing: RAW SLOT 1 ↔ RESULT 1/2 dan RAW SLOT 2 ↔ RESULT 1/2. 🏆 = JP · 💀 = ZONK.</div></div>`+history.map(renderSessionHistory).join('')}
-function renderSessionHistory(e){const raws=e.raws||[],results=e.results||[],statuses=e.statuses||[],cross=e.crossings||[];let rows='';for(let i=0;i<raws.length;i++){const cx=cross[i]||[];rows+=`<div class="hist-card"><div class="hist-head"><div><span class="hist-date">${esc(e.entry_date)}</span> <span style="font-size:8px;color:var(--accent)">SESI ${esc(e.session_label||e.session)} · RAW SLOT ${i+1}</span></div><div class="hist-status ${statuses[i]==='JP'?'jp':'zonk'}">${statuses[i]==='JP'?'🏆 JP':'💀 ZONK'}</div></div><div class="rawresult"><div class="mini"><label>RAW 8 DIGIT</label><b>${esc(raws[i]||'-')}</b></div><div class="mini"><label>RESULT SLOT 1 / 2</label><b style="color:var(--gold)">${esc(results[0]||'-')} / ${esc(results[1]||'-')}</b></div></div><div class="match-box"><div class="match-title">🎯 CROSSING RAW SLOT ${i+1} → RESULT SLOT 1 / 2</div>${cx.length?cx.map(x=>`<span class="match-chip">${x.status==='JP'?'🏆':'💀'} RESULT ${x.result_slot}: ${esc(x.result)}${x.matches?.H4?' · 4D #'+x.matches.H4:''}${x.matches?.H3?' · 3D #'+x.matches.H3:''}${x.matches?.H2?' · 2D #'+x.matches.H2:''}</span>`).join(''):'<span style="font-size:8px;color:var(--dim)">Menunggu RESULT.</span>'}</div></div>`}return `<div class="hv2-box"><div class="hv2-title">${esc(e.session_label||e.session)} · ${esc(e.entry_date)}</div>${rows}</div>`}
-function exportHistory(){const blob=new Blob([JSON.stringify({engine:'BOOT-PRNG-v1.1',exportedAt:new Date().toISOString(),history},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='A-H_BOOT_PRNG_5SESI_history.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
-async function clearHistory(){if(!confirm('Hapus seluruh riwayat BOOT PRNG dari Supabase?'))return;const {error}=await sb.from('boot_prng_history').delete().not('id','is',null);if(error){alert('Gagal hapus: '+error.message);return}history=[];sessionRecords=[];renderHistoryPage();renderDailyHistory();$('saveState').textContent='● SUPABASE · RIWAYAT KOSONG'}
-$('entryDate').addEventListener('change',()=>{renderSessions();renderDailyHistory()});renderSessions();renderHistoryPage();loadHistoryFromSupabase();
+
+function matchesFor(list,result,n){
+  if(!Array.isArray(list)||!result||String(result).length!==4)return null;
+  const target=String(result).slice(-n);
+  const hit=list.find(c=>String(c.digits).slice(-n)===target);
+  return hit?hit.rank:null;
+}
+function crossMatch(engine,result){
+  if(!engine||!result||String(result).length!==4)return {H4:null,H3:null,H2:null};
+  return {
+    H4:matchesFor(engine.candidates4,result,4),
+    H3:matchesFor(engine.candidates3,result,3),
+    H2:matchesFor(engine.candidates2,result,2)
+  };
+}
+function crossEvaluate(sessionKey){
+  const ss=getSessionSlots(sessionKey),results=ss.map(s=>s.result||'');
+  ss.forEach(rawSlot=>{
+    if(!rawSlot.engine)return;
+    rawSlot.cross=[];
+    results.forEach((res,ri)=>{
+      if(res){
+        const m=crossMatch(rawSlot.engine,res);
+        rawSlot.cross.push({
+          resultSlot:ri+1,result:res,matches:m,
+          status:Object.values(m).some(Boolean)?'JP':'ZONK'
+        });
+      }
+    });
+    rawSlot.status=rawSlot.cross.some(x=>x.status==='JP')?'JP':
+      (rawSlot.cross.length?'ZONK':'PENDING');
+  });
+  return ss;
+}
+function crossText(s){
+  return (s.cross||[]).map(x=>
+    `${x.status==='JP'?'🏆':'💀'} RESULT ${x.resultSlot}`+
+    `${Object.values(x.matches||{}).some(Boolean)?
+      ` · ${x.matches.H4?'4D #'+x.matches.H4+' ':''}${x.matches.H3?'· 3D #'+x.matches.H3+' ':''}${x.matches.H2?'· 2D #'+x.matches.H2:''}`:''}`
+  ).join('  ');
+}
+function rowFromSlot(s,date){
+  return {
+    id:`${date}_${s.session}_S${s.slot}`,
+    entry_date:date,
+    session:s.session,
+    session_label:s.label,
+    slot:s.slot,
+    raw:s.raw||null,
+    result:s.result||null,
+    status:s.status||'PENDING',
+    matches:s.cross||[],
+    candidates4:s.engine?.candidates4||null,
+    candidates3:s.engine?.candidates3||null,
+    candidates2:s.engine?.candidates2||null,
+    analysis:s.engine?.analysis||null,
+    engine:'BOOT-PRNG-v1.3-RANDOM-BALANCED-CROSS',
+    updated_at:new Date().toISOString()
+  };
+}
+async function saveSessionToSupabase(sessionKey){
+  if(!sb){
+    $('saveState').textContent='⚠ SUPABASE BELUM DIKONFIGURASI — DATA TIDAK DISIMPAN';
+    return false;
+  }
+  const date=$('entryDate').value||today();
+  const ss=getSessionSlots(sessionKey);
+  const rows=ss.filter(s=>s.engine).map(s=>rowFromSlot(s,date));
+  if(!rows.length)return false;
+  const {error}=await sb.from('boot_prng_history').upsert(rows,{onConflict:'id'});
+  if(error){
+    $('saveState').textContent='⚠ GAGAL SIMPAN SUPABASE: '+error.message;
+    return false;
+  }
+  await loadHistoryFromSupabase(false);
+  $('saveState').textContent='● TERSIMPAN SUPABASE · '+history.length+' slot';
+  return true;
+}
+async function saveResult(id){
+  const s=slots[id];
+  if(!s.engine){
+    $('msg-'+id).textContent='⚠ Generate RAW dulu.';
+    return;
+  }
+  const result=$('result-'+id).value.replace(/\D/g,'').slice(0,4);
+  $('result-'+id).value=result;
+  if(result.length!==4){
+    $('msg-'+id).textContent='⚠ RESULT harus tepat 4 digit.';
+    return;
+  }
+  s.result=result;
+  crossEvaluate(s.session);
+  const ok=await saveSessionToSupabase(s.session);
+  renderSessions();
+  renderHistoryPage();
+  $('msg-'+id).textContent=ok?'✓ RESULT + CROSSING tersimpan ke Supabase.':'⚠ RESULT belum tersimpan.';
+}
+async function loadHistoryFromSupabase(render=true){
+  if(!sb){
+    $('saveState').textContent='⚠ KLIEN SUPABASE GAGAL DIMUAT';
+    history=[];sessionRecords=[];
+    return;
+  }
+  const {data,error}=await sb.from('boot_prng_history')
+    .select('*')
+    .order('entry_date',{ascending:false})
+    .order('session',{ascending:true})
+    .order('slot',{ascending:true});
+  if(error){
+    $('saveState').textContent='⚠ GAGAL BACA SUPABASE: '+error.message;
+    history=[];sessionRecords=[];
+    return;
+  }
+  sessionRecords=data||[];
+  history=sessionRecords;
+  hydrateSelectedDate();
+  if(render){
+    renderSessions();
+    renderHistoryPage();
+  }
+}
+function hydrateSelectedDate(){
+  const date=$('entryDate').value||today();
+  initSlots();
+  const rows=history.filter(r=>String(r.entry_date)===String(date));
+  rows.forEach(r=>{
+    const s=slots.find(x=>x.session===r.session&&x.slot===Number(r.slot));
+    if(!s)return;
+    s.raw=r.raw||'';
+    s.result=r.result||'';
+    s.status=r.status||'PENDING';
+    s.cross=Array.isArray(r.matches)?r.matches:[];
+    if(r.candidates4||r.candidates3||r.candidates2){
+      s.engine={
+        date:date,session:s.session,slot:s.slot,raw:s.raw,
+        analysis:r.analysis||{position:{freq:[],sum:0,mean:0,unique:0,even:0,high:0,low:0,posW:[]},relation:{adj:[],mirror:[],deltas:[]}},
+        candidates4:r.candidates4||[],
+        candidates3:r.candidates3||[],
+        candidates2:r.candidates2||[],
+        result:s.result,matches:null,status:s.status,createdAt:r.created_at||r.updated_at
+      };
+    }
+  });
+  SESSION_CONFIG.forEach(sess=>crossEvaluate(sess.key));
+}
+function renderSessions(){
+  let html='';
+  SESSION_CONFIG.forEach(sess=>{
+    crossEvaluate(sess.key);
+    html+=`<div class="session-box"><div class="session-head">
+      <div class="session-title">🕐 SESI ${sess.label}</div>
+      <div class="slot-badge">${sess.slots} SLOT RAW + ${sess.slots} SLOT RESULT · CROSSING</div>
+    </div><div class="slot-grid">`;
+    for(let n=1;n<=sess.slots;n++){
+      const x=slots.find(v=>v.session===sess.key&&v.slot===n);
+      html+=renderSlot(x);
+    }
+    html+='</div></div>';
+  });
+  $('sessionBoard').innerHTML=html;
+  renderDailyHistory();
+}
+function renderSlot(s){
+  const e=s.engine;
+  let candidate=e?analysisSummary(e)+`<div class="slot-candidates">
+    ${candidateSection('4H',e.candidates4)}
+    ${candidateSection('3H',e.candidates3)}
+    ${candidateSection('2H',e.candidates2)}
+  </div>`:'';
+  let status=e&&s.cross?.length?
+    `<div class="slot-status ${s.status==='JP'?'jp':'zonk'}">
+      ${s.status==='JP'?'🏆 JP':'💀 ZONK'} · ${esc(crossText(s))}
+    </div>`:'';
+  return `<div class="slot-card">
+    <div class="slot-title">RAW DATA V2 STYLE · SLOT ${s.slot}</div>
+    <div class="slot-input-row">
+      <input class="slot-raw" id="raw-${s.id}" maxlength="8" inputmode="numeric" value="${esc(s.raw)}" placeholder="RAW 8 DIGIT">
+      <button class="slot-gen" onclick="generateSlot(${s.id})">⚡ GENERATE</button>
+    </div>
+    <div class="slot-result-row">
+      <input class="slot-result" id="result-${s.id}" maxlength="4" inputmode="numeric" value="${esc(s.result)}" placeholder="RESULT 4 DIGIT">
+      <button class="slot-save" onclick="saveResult(${s.id})">SIMPAN</button>
+    </div>
+    <div class="slot-msg" id="msg-${s.id}">
+      ${e?'✓ Kandidat aktif · 90 kandidat tersedia':'Masukkan RAW 8 digit lalu Generate.'}
+    </div>
+    ${status}${candidate}
+  </div>`;
+}
+async function generateSlot(id){
+  const s=slots[id];
+  const raw=$('raw-'+id).value.replace(/\D/g,'').slice(0,8);
+  $('raw-'+id).value=raw;
+  if(raw.length!==8){
+    $('msg-'+id).textContent='⚠ RAW harus tepat 8 digit.';
+    return;
+  }
+  const btn=document.querySelector(`button[onclick="generateSlot(${id})"]`);
+  if(btn){btn.disabled=true;btn.textContent='⏳ GENERATE...';}
+  try{
+    s.raw=raw;
+    s.result='';
+    s.engine=buildEngine(raw,s.session,s.slot,$('entryDate').value||today());
+    s.engine.result='';
+    s.engine.status='PENDING';
+    s.cross=[];
+    s.status='PENDING';
+    $('result-'+id).value='';
+    const ok=await saveSessionToSupabase(s.session);
+    renderSessions();
+    renderAnalysisPage();
+    const fresh=slots[id];
+    if($('msg-'+id))$('msg-'+id).textContent=ok?
+      '✓ BOOT PRNG selesai · 90 kandidat tersimpan Supabase.':
+      '⚠ Kandidat dibuat, tetapi gagal tersimpan ke Supabase.';
+  }catch(err){
+    console.error(err);
+    $('msg-'+id).textContent='⚠ Generate error: '+(err?.message||err);
+  }
+}
+function groupHistory(){
+  const groups=new Map();
+  history.forEach(r=>{
+    const key=`${r.entry_date}_${r.session}`;
+    if(!groups.has(key))groups.set(key,{
+      entry_date:r.entry_date,session:r.session,
+      session_label:r.session_label||r.session,rows:[]
+    });
+    groups.get(key).rows.push(r);
+  });
+  return [...groups.values()].sort((a,b)=>
+    String(b.entry_date).localeCompare(String(a.entry_date))||
+    String(a.session).localeCompare(String(b.session))
+  );
+}
+function renderDailyHistory(){
+  const date=$('entryDate').value||today();
+  const groups=groupHistory().filter(g=>String(g.entry_date)===String(date));
+  if(!groups.length){
+    $('dailyHistory').innerHTML='';
+    return;
+  }
+  $('dailyHistory').innerHTML=
+    `<div class="hv2-box">
+      <div class="hv2-title">📒 RIWAYAT HARIAN · ${esc(date)}</div>
+      <div class="hv2-sub">Crossing aktif. RAW Slot 1 ↔ Result 1/2 dan RAW Slot 2 ↔ Result 1/2. 🏆 JP · 💀 ZONK.</div>
+    </div>`+
+    groups.map(renderSessionHistory).join('');
+}
+function switchPage(p){
+  ['generator','analysis','history'].forEach(x=>{
+    $('page-'+x).classList.toggle('active',x===p);
+    $('tab-'+x).classList.toggle('active',x===p);
+  });
+  if(p==='analysis')renderAnalysisPage();
+  if(p==='history')renderHistoryPage();
+}
+function renderAnalysisPage(){
+  const ready=slots.filter(s=>s.engine);
+  if(!ready.length){
+    $('analysisPage').innerHTML='<div class="hv2-empty">Belum ada RAW. Masukkan RAW 8 digit pada salah satu slot.</div>';
+    return;
+  }
+  $('analysisPage').innerHTML=ready.map(e=>
+    `<div class="hv2-box"><div class="hv2-title">SESI ${e.label} · SLOT ${e.slot}</div>${analysisSummary(e.engine)}</div>`
+  ).join('');
+}
+function renderHistoryPage(){
+  const groups=groupHistory();
+  if(!groups.length){
+    $('historyPage').innerHTML='<div class="hv2-empty">Belum ada riwayat Supabase. Generate RAW atau simpan RESULT untuk membuat arsip.</div>';
+    return;
+  }
+  $('historyPage').innerHTML=
+    `<div class="hv2-box">
+      <div class="hv2-title">🏆 RIWAYAT LENGKAP — BOOT PRNG</div>
+      <div class="hv2-sub">Full Supabase. Crossing: RAW SLOT 1 ↔ RESULT SLOT 1/2 dan RAW SLOT 2 ↔ RESULT SLOT 1/2. 🏆 = JP · 💀 = ZONK.</div>
+    </div>`+
+    groups.map(renderSessionHistory).join('');
+}
+function renderSessionHistory(g){
+  const rows=(g.rows||[]).sort((a,b)=>(a.slot||0)-(b.slot||0));
+  const result1=rows.find(r=>Number(r.slot)===1)?.result||null;
+  const result2=rows.find(r=>Number(r.slot)===2)?.result||null;
+  let body='';
+  rows.forEach(r=>{
+    const cx=Array.isArray(r.matches)?r.matches:[];
+    const st=r.status==='JP'?'JP':(r.status==='ZONK'?'ZONK':'PENDING');
+    const status=st==='JP'?'🏆 JP':st==='ZONK'?'💀 ZONK':'⏳ PENDING';
+    body+=`<div class="hist-card">
+      <div class="hist-head">
+        <div><span class="hist-date">${esc(g.entry_date)}</span>
+          <span style="font-size:8px;color:var(--accent)">SESI ${esc(g.session_label)} · RAW SLOT ${r.slot}</span>
+        </div>
+        <div class="hist-status ${st==='JP'?'jp':'zonk'}">${status}</div>
+      </div>
+      <div class="rawresult">
+        <div class="mini"><label>RAW 8 DIGIT</label><b>${esc(r.raw||'-')}</b></div>
+        <div class="mini"><label>RESULT SLOT 1 / 2</label><b style="color:var(--gold)">${esc(result1||'-')} / ${esc(result2||'-')}</b></div>
+      </div>
+      <div class="match-box">
+        <div class="match-title">🎯 CROSSING RAW SLOT ${r.slot} → RESULT SLOT 1 / 2</div>
+        ${cx.length?cx.map(x=>
+          `<span class="match-chip">
+            ${x.status==='JP'?'🏆':'💀'} RESULT ${x.resultSlot}: ${esc(x.result)}
+            ${x.matches?.H4?' · 4D #'+x.matches.H4:''}
+            ${x.matches?.H3?' · 3D #'+x.matches.H3:''}
+            ${x.matches?.H2?' · 2D #'+x.matches.H2:''}
+          </span>`).join(''):
+          '<span style="font-size:8px;color:var(--dim)">Menunggu RESULT.</span>'}
+      </div>
+    </div>`;
+  });
+  return `<div class="hv2-box"><div class="hv2-title">${esc(g.session_label)} · ${esc(g.entry_date)}</div>${body}</div>`;
+}
+async function clearHistory(){
+  if(!sb)return;
+  if(!confirm('Hapus seluruh riwayat BOOT PRNG dari Supabase?'))return;
+  const {error}=await sb.from('boot_prng_history').delete().not('id','is',null);
+  if(error){alert('Gagal hapus: '+error.message);return}
+  history=[];sessionRecords=[];initSlots();renderSessions();renderHistoryPage();
+  $('saveState').textContent='● SUPABASE · RIWAYAT KOSONG';
+}
+function exportHistory(){
+  const blob=new Blob([JSON.stringify({engine:'BOOT-PRNG-v1.3',exportedAt:new Date().toISOString(),history},null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='A-H_BOOT_PRNG_5SESI_history.json';a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+$('entryDate').addEventListener('change',()=>loadHistoryFromSupabase(true));
+renderSessions();
+renderHistoryPage();
+loadHistoryFromSupabase(true);
+
 </script>
 </body></html>
